@@ -1,0 +1,8 @@
+# 忽略编译后的 class 文件
+*.class
+
+# 忽略 VS Code 的配置文件夹
+.vscode/
+.settings/
+*.project
+*.classpath
