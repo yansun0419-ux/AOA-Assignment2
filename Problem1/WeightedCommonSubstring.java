@@ -6,20 +6,20 @@ import java.util.Random;
 
 public class WeightedCommonSubstring {
 
-  // 定义一个简单的类来保存结果：分数、子串、以及具体的位置信息
+  // Result class to store the solution: score, substring, and location
+  // information
   static class Result {
     double maxScore;
     String substring;
-    // 记录在 s1 和 s2 中的起始和结束索引 (0-based)
+    // Start and end indices in s1 and s2 (0-based)
     int s1Start, s1End;
     int s2Start, s2End;
 
     public Result(double maxScore, String substring, int endI, int endJ) {
       this.maxScore = maxScore;
       this.substring = substring;
-      // DP表的下标是 1-based (1..m)，对应字符串下标是 0..m-1
-      // endI 是 DP 表中的索引，对应字符串索引是 endI - 1
-      // 子串长度
+      // DP table uses 1-based indexing (1..m), string uses 0-based (0..m-1)
+      // endI is the DP table index, corresponding to string index endI - 1
       int len = substring.length();
 
       if (len > 0) {
@@ -35,20 +35,21 @@ public class WeightedCommonSubstring {
   }
 
   /**
-   * 核心 DP 算法
+   * Core dynamic programming algorithm for weighted common substring
    */
   public static Result solve(String s1, String s2, Map<Character, Double> weights, double delta) {
     int m = s1.length();
     int n = s2.length();
 
-    // dp[i][j] 代表以 s1[i-1] 和 s2[j-1] 结尾的公共子串的最大分数
+    // dp[i][j] represents the max score of common substring ending at s1[i-1] and
+    // s2[j-1]
     double[][] dp = new double[m + 1][n + 1];
 
     double globalMaxScore = 0;
     int maxI = 0;
     int maxJ = 0;
 
-    // 填充 DP 表
+    // Fill DP table
     for (int i = 1; i <= m; i++) {
       for (int j = 1; j <= n; j++) {
         char c1 = s1.charAt(i - 1);
@@ -56,17 +57,17 @@ public class WeightedCommonSubstring {
 
         double score;
         if (c1 == c2) {
-          // 匹配
+          // Characters match: add weight
           score = dp[i - 1][j - 1] + weights.getOrDefault(c1, 1.0);
         } else {
-          // 不匹配
+          // Characters mismatch: subtract penalty
           score = dp[i - 1][j - 1] - delta;
         }
 
-        // 局部对齐逻辑：如果得分 < 0，则重置为 0
+        // Local alignment logic: reset to 0 if score becomes negative
         dp[i][j] = Math.max(0, score);
 
-        // 更新全局最大值
+        // Update global maximum
         if (dp[i][j] > globalMaxScore) {
           globalMaxScore = dp[i][j];
           maxI = i;
@@ -75,7 +76,7 @@ public class WeightedCommonSubstring {
       }
     }
 
-    // 回溯提取最优子串
+    // Traceback to extract optimal substring
     StringBuilder sb = new StringBuilder();
     int currI = maxI;
     int currJ = maxJ;
@@ -89,9 +90,9 @@ public class WeightedCommonSubstring {
     return new Result(globalMaxScore, sb.reverse().toString(), maxI, maxJ);
   }
 
-  // --- 实验部分 ---
+  // Experimental evaluation methods
 
-  // Scenario 1: 固定权重测试
+  // Scenario 1: Fixed weight testing
   public static void runScenario1() {
     System.out.println("=== Running Scenario 1 (Verification) ===");
     String s1 = "ABCAABCAA";
@@ -110,7 +111,6 @@ public class WeightedCommonSubstring {
     System.out.println("------------------------------------------------");
     System.out.printf("Max Score: %.2f\n", res.maxScore);
     System.out.printf("Substring: \"%s\"\n", res.substring);
-    // 打印详细位置，验证 Copilot 提到的准确性问题
     if (res.maxScore > 0) {
       System.out.printf("Location in S1: index %d to %d\n", res.s1Start, res.s1End);
       System.out.printf("Location in S2: index %d to %d\n", res.s2Start, res.s2End);
@@ -118,16 +118,14 @@ public class WeightedCommonSubstring {
     System.out.println("================================================\n");
   }
 
-  // Scenario 2: 真实频率权重 + 固定种子随机数据
+  // Scenario 2: English letter frequency weights with varying delta
   public static void runScenario2() {
     System.out.println("=== Running Scenario 2 (Experiments) ===");
 
-    // 使用固定种子 (Seed) 保证结果可复现 (Reproducible)
+    // Use fixed seed for reproducibility
     long seed = 12345;
     String s1 = generateRandomString(1000, seed);
-    // 使用不同的种子或者在这个基础上继续生成，这里简单起见再次调用带种子的生成会重置，
-    // 所以我们传递 Random 对象或者用不同的种子更好。
-    // 为了简单且确定，我们用 seed+1 生成 s2
+    // Use seed+1 for second string to ensure different but reproducible data
     String s2 = generateRandomString(1000, seed + 1);
 
     Map<Character, Double> freqWeights = new HashMap<>();
@@ -175,7 +173,7 @@ public class WeightedCommonSubstring {
     }
   }
 
-  // 生成随机大写字母字符串 (带种子)
+  // Generate random uppercase letter string with fixed seed
   private static String generateRandomString(int length, long seed) {
     StringBuilder sb = new StringBuilder();
     Random rand = new Random(seed);
