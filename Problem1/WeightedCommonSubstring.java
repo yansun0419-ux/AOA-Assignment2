@@ -6,44 +6,49 @@ import java.util.Random;
 
 public class WeightedCommonSubstring {
 
-  // 定义一个简单的类来保存结果：分数和对应的子串
+  // 定义一个简单的类来保存结果：分数、子串、以及具体的位置信息
   static class Result {
     double maxScore;
     String substring;
-    int endI; // 记录结束位置，方便调试
-    int endJ;
+    // 记录在 s1 和 s2 中的起始和结束索引 (0-based)
+    int s1Start, s1End;
+    int s2Start, s2End;
 
     public Result(double maxScore, String substring, int endI, int endJ) {
       this.maxScore = maxScore;
       this.substring = substring;
-      this.endI = endI;
-      this.endJ = endJ;
+      // DP表的下标是 1-based (1..m)，对应字符串下标是 0..m-1
+      // endI 是 DP 表中的索引，对应字符串索引是 endI - 1
+      // 子串长度
+      int len = substring.length();
+
+      if (len > 0) {
+        this.s1End = endI - 1;
+        this.s1Start = this.s1End - len + 1;
+        this.s2End = endJ - 1;
+        this.s2Start = this.s2End - len + 1;
+      } else {
+        this.s1Start = this.s1End = -1;
+        this.s2Start = this.s2End = -1;
+      }
     }
   }
 
   /**
    * 核心 DP 算法
-   * * @param s1 字符串1
-   * 
-   * @param s2      字符串2
-   * @param weights 字符权重表 (比如 'A' -> 1.0)
-   * @param delta   不匹配时的惩罚 (正数，计算时会用减法)
-   * @return Result 对象包含最高分和子串
    */
   public static Result solve(String s1, String s2, Map<Character, Double> weights, double delta) {
     int m = s1.length();
     int n = s2.length();
 
-    // 1. 初始化 DP 表
     // dp[i][j] 代表以 s1[i-1] 和 s2[j-1] 结尾的公共子串的最大分数
-    // 默认初始化为 0.0
     double[][] dp = new double[m + 1][n + 1];
 
     double globalMaxScore = 0;
     int maxI = 0;
     int maxJ = 0;
 
-    // 2. 填充 DP 表 (Iterative approach, NO recursion)
+    // 填充 DP 表
     for (int i = 1; i <= m; i++) {
       for (int j = 1; j <= n; j++) {
         char c1 = s1.charAt(i - 1);
@@ -51,16 +56,14 @@ public class WeightedCommonSubstring {
 
         double score;
         if (c1 == c2) {
-          // 匹配：增加权重
-          // getOrDefault 防止遇到未定义的字符报错，默认给 1.0
+          // 匹配
           score = dp[i - 1][j - 1] + weights.getOrDefault(c1, 1.0);
         } else {
-          // 不匹配：扣分 (惩罚 delta)
+          // 不匹配
           score = dp[i - 1][j - 1] - delta;
         }
 
-        // 关键点：如果是负数，重置为 0 (Local Alignment 逻辑)
-        // 这意味着我们放弃之前的子串，从当前位置重新开始尝试
+        // 局部对齐逻辑：如果得分 < 0，则重置为 0
         dp[i][j] = Math.max(0, score);
 
         // 更新全局最大值
@@ -72,34 +75,29 @@ public class WeightedCommonSubstring {
       }
     }
 
-    // 3. 回溯 (Traceback) 提取最优子串
-    // 从 (maxI, maxJ) 往回找，直到分数变为 0 或到达边界
+    // 回溯提取最优子串
     StringBuilder sb = new StringBuilder();
     int currI = maxI;
     int currJ = maxJ;
 
-    // 只要当前分数大于 0，说明还在同一个子串路径上
     while (currI > 0 && currJ > 0 && dp[currI][currJ] > 0) {
-      // 注意：因为只允许连续子串，所以肯定是沿对角线回溯
       sb.append(s1.charAt(currI - 1));
       currI--;
       currJ--;
     }
 
-    // 因为是从后往前加的，所以要反转回来
     return new Result(globalMaxScore, sb.reverse().toString(), maxI, maxJ);
   }
 
-  // --- 下面是实验用的辅助函数 ---
+  // --- 实验部分 ---
 
-  // Scenario 1: 所有权重为 1, delta = 10
+  // Scenario 1: 固定权重测试
   public static void runScenario1() {
-    System.out.println("=== Running Scenario 1 ===");
+    System.out.println("=== Running Scenario 1 (Verification) ===");
     String s1 = "ABCAABCAA";
     String s2 = "ABBCAACCBBBBBB";
 
     Map<Character, Double> weights = new HashMap<>();
-    // 简单权重：所有字母权重都是 1.0
     for (char c = 'A'; c <= 'Z'; c++) {
       weights.put(c, 1.0);
     }
@@ -107,27 +105,33 @@ public class WeightedCommonSubstring {
     double delta = 10.0;
     Result res = solve(s1, s2, weights, delta);
 
-    System.out.printf("S1: %s\nS2: %s\nDelta: %.1f\n", s1, s2, delta);
-    System.out.printf("Max Score: %.2f\nSubstring: %s\n", res.maxScore, res.substring);
-    System.out.println("--------------------------");
+    System.out.printf("Input S1: %s\nInput S2: %s\n", s1, s2);
+    System.out.printf("Parameters: Weight=1.0, Delta=%.1f\n", delta);
+    System.out.println("------------------------------------------------");
+    System.out.printf("Max Score: %.2f\n", res.maxScore);
+    System.out.printf("Substring: \"%s\"\n", res.substring);
+    // 打印详细位置，验证 Copilot 提到的准确性问题
+    if (res.maxScore > 0) {
+      System.out.printf("Location in S1: index %d to %d\n", res.s1Start, res.s1End);
+      System.out.printf("Location in S2: index %d to %d\n", res.s2Start, res.s2End);
+    }
+    System.out.println("================================================\n");
   }
 
-  // Scenario 2: 真实频率权重, Delta 变化
+  // Scenario 2: 真实频率权重 + 固定种子随机数据
   public static void runScenario2() {
-    System.out.println("=== Running Scenario 2 (Real English Frequencies) ===");
+    System.out.println("=== Running Scenario 2 (Experiments) ===");
 
-    // 生成随机字符串用于测试 (保持长一点，以便观察效果)
-    // 注意：虽然权重不能随机，但输入的字符串 s1 和 s2 题目没说不能随机生成
-    // 题目只说了 "synthetic data" (合成数据)，所以随机字符串是可以的
-    String s1 = generateRandomString(1000);
-    String s2 = generateRandomString(1000);
+    // 使用固定种子 (Seed) 保证结果可复现 (Reproducible)
+    long seed = 12345;
+    String s1 = generateRandomString(1000, seed);
+    // 使用不同的种子或者在这个基础上继续生成，这里简单起见再次调用带种子的生成会重置，
+    // 所以我们传递 Random 对象或者用不同的种子更好。
+    // 为了简单且确定，我们用 seed+1 生成 s2
+    String s2 = generateRandomString(1000, seed + 1);
 
     Map<Character, Double> freqWeights = new HashMap<>();
-
-    // 数据来源：Cornell University Math Department
-    // 频率越高，通常认为匹配价值越低(信息量小)？或者价值越高？
-    // 题目说 "proportional to the frequency" (与频率成正比)
-    // 所以我们就直接用百分比作为权重 (例如 E=12.02, Z=0.07)
+    // Cornell University Math Dept. Frequency Data
     freqWeights.put('A', 8.12);
     freqWeights.put('B', 1.49);
     freqWeights.put('C', 2.71);
@@ -155,30 +159,26 @@ public class WeightedCommonSubstring {
     freqWeights.put('Y', 2.11);
     freqWeights.put('Z', 0.07);
 
-    // 找出最小和最大权重，确定 Delta 的范围
-    // 最小是 Z (0.07), 最大是 E (12.02)
     double minW = 0.07;
     double maxW = 12.02;
-
-    // 实验：Delta 取 10 个中间值
-    // 我们让 Delta 从 最小权重 略大一点开始，一直到 最大权重
     double step = (maxW - minW) / 9.0;
 
-    System.out.println("Delta \t MaxScore \t SubstringLen \t Substring (First 10 chars)");
+    System.out.printf("%-10s %-10s %-10s %-30s\n", "Delta", "MaxScore", "Length", "Substring (First 15 chars)");
+    System.out.println("-------------------------------------------------------------------");
+
     for (int i = 0; i < 10; i++) {
       double delta = minW + i * step;
       Result res = solve(s1, s2, freqWeights, delta);
 
-      // 打印结果，如果子串太长只显示前10个字符
-      String displayStr = res.substring.length() > 10 ? res.substring.substring(0, 10) + "..." : res.substring;
-      System.out.printf("%.2f \t %.2f \t\t %d \t\t %s\n", delta, res.maxScore, res.substring.length(), displayStr);
+      String displayStr = res.substring.length() > 15 ? res.substring.substring(0, 15) + "..." : res.substring;
+      System.out.printf("%-10.2f %-10.2f %-10d %-30s\n", delta, res.maxScore, res.substring.length(), displayStr);
     }
   }
 
-  // 生成随机大写字母字符串
-  private static String generateRandomString(int length) {
+  // 生成随机大写字母字符串 (带种子)
+  private static String generateRandomString(int length, long seed) {
     StringBuilder sb = new StringBuilder();
-    Random rand = new Random();
+    Random rand = new Random(seed);
     for (int i = 0; i < length; i++) {
       sb.append((char) ('A' + rand.nextInt(26)));
     }
@@ -186,7 +186,6 @@ public class WeightedCommonSubstring {
   }
 
   public static void main(String[] args) {
-    // 运行作业要求的两个场景
     runScenario1();
     runScenario2();
   }
